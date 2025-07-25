@@ -41,7 +41,9 @@ To-Doist-expo/.DS_Store
 *.tsbuildinfo
 
 todoist-backend/venv/*
-
+todoist-backend/.env	
+todoist-backend/db.sqlite3
+todoist-backend/__pycache__/
 
 # Logs
 todoist-react/logs
