@@ -1,0 +1,58 @@
+.env
+
+
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+To-Doist-expo/node_modules/
+
+# Expo
+To-Doist-expo/.expo/
+To-Doist-expo/dist/
+To-Doist-expo/web-build/
+To-Doist-expo/expo-env.d.ts
+
+# Native
+To-Doist-expo/.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+To-Doist-expo/.metro-health-check*
+
+# debug
+To-Doist-expo/npm-debug.*
+To-Doist-expo/yarn-debug.*
+To-Doist-expo/yarn-error.*
+
+# macOS
+To-Doist-expo/.DS_Store
+*.pem
+
+# local env files
+.env*.local
+.env
+
+# typescript
+*.tsbuildinfo
+
+todoist-backend/venv/*
+
+
+# Logs
+todoist-react/logs
+*.log
+todoist-react/npm-debug.log*
+todoist-react/yarn-debug.log*
+todoist-react/yarn-error.log*
+todoist-react/pnpm-debug.log*
+todoist-react/lerna-debug.log*
+
+todoist-react/node_modules
+todoist-react/dist
+todoist-react/dist-ssr
+*.local
