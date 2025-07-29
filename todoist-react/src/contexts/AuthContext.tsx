@@ -7,17 +7,29 @@ interface User {
   email: string;
   first_name?: string;
   last_name?: string;
+  is_email_verified?: boolean;
+  two_factor_enabled?: boolean;
+  is_oauth_only_user?: boolean;
+}
+
+interface RateLimitStatus {
+  can_send: boolean;
+  time_remaining: number;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{requires2FA?: boolean, userId?: number, message?: string, codeAlreadySent?: boolean, emailNotVerified?: boolean, email?: string, warningType?: string, actionRequired?: string}>;
+  loginVerify2FA: (userId: number, code: string) => Promise<void>;
+  resend2FACode: (userId: number, purpose?: string) => Promise<{success: boolean, message: string}>;
   register: (userData: RegisterData) => Promise<{success: boolean, message: string, email?: string}>;
   verifyEmail: (token: string) => Promise<{success: boolean, message: string}>;
   resendVerification: (email: string) => Promise<{success: boolean, message: string}>;
-  googleLogin: (token: string) => Promise<void>;
+  checkEmailRateLimit: (email: string, requestType?: string) => Promise<RateLimitStatus>;
+  googleLogin: (googleUserData: any) => Promise<void>;
+  refreshUserData: () => Promise<void>;
   logout: () => void;
 }
 
@@ -53,34 +65,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is already logged in on app start
   useEffect(() => {
     const checkAuthStatus = async () => {
-      console.log('🔍 AuthContext: Checking auth status...');
       const token = localStorage.getItem('access_token');
-      console.log('🔍 AuthContext: Access token found:', !!token);
       
       if (token) {
         try {
-          console.log('🔍 AuthContext: Fetching user profile...');
           const userData = await apiRequest(API_ENDPOINTS.USER_PROFILE);
-          console.log('✅ AuthContext: User profile fetched:', userData);
           setUser(userData);
         } catch (error) {
-          console.log('❌ AuthContext: Failed to fetch user profile:', error);
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
         }
       }
       setIsLoading(false);
-      console.log('🔍 AuthContext: Auth status check complete');
     };
 
     checkAuthStatus();
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string): Promise<{requires2FA?: boolean, userId?: number, message?: string, emailNotVerified?: boolean, email?: string, warningType?: string, actionRequired?: string}> => {
     try {
-      console.log('🔍 AuthContext: Starting login process...');
-      console.log('🔍 AuthContext: Login URL:', API_ENDPOINTS.LOGIN);
-      console.log('🔍 AuthContext: Login data:', { email, password: '***' });
       setIsLoading(true);
       
       const response = await fetch(API_ENDPOINTS.LOGIN, {
@@ -91,7 +94,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
       
-      console.log('🔍 AuthContext: Login response status:', response.status);
 
       if (!response.ok) {
         // Handle server errors (5xx)
@@ -106,6 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error('Service may be unavailable. Please try again later.');
         }
         
+        console.log('Login response status:', response.status);
+        console.log('Login response data:', errorData);
+        
         // Handle 401 errors (authentication failures) - show user-friendly messages
         if (response.status === 401) {
           throw new Error(errorData.error || errorData.message || 'Invalid login credentials');
@@ -113,6 +118,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Handle 403 errors (forbidden - like unverified email)
         if (response.status === 403) {
+          // Check if it's an email verification issue
+          if (errorData.email_verified === false) {
+            console.log('Email verification required, returning warning data');
+            return {
+              emailNotVerified: true,
+              email: errorData.user_email || email,
+              message: errorData.error || errorData.message || 'Please verify your email address before logging in.',
+              warningType: errorData.warning_type || 'email_verification_required',
+              actionRequired: errorData.action_required || 'verify_email'
+            };
+          }
           throw new Error(errorData.error || errorData.message || 'Access denied');
         }
         
@@ -121,19 +137,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('✅ AuthContext: Login successful, response data:', data);
       
-      // Store tokens
+      // Check if 2FA is required
+      if (data.requires_2fa) {
+        return {
+          requires2FA: true,
+          userId: data.user_id,
+          message: data.message,
+          codeAlreadySent: data.code_already_sent
+        };
+      }
+      
+      // Normal login - store tokens and set user
       localStorage.setItem('access_token', data.access);
       localStorage.setItem('refresh_token', data.refresh);
-      console.log('✅ AuthContext: Tokens stored');
       
       // Set user from response
       setUser(data.user);
-      console.log('✅ AuthContext: User set:', data.user);
+      
+      return {};
       
     } catch (error) {
-      console.log('❌ AuthContext: Login error:', error);
       // Check if it's a network error or server exception
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Service may be unavailable. Please try again later.');
@@ -144,11 +168,88 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginVerify2FA = async (userId: number, code: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(API_ENDPOINTS.LOGIN_VERIFY_2FA, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId, code }),
+      });
+      
+
+      if (!response.ok) {
+        // Handle server errors (5xx)
+        if (response.status >= 500) {
+          throw new Error('Service may be unavailable. Please try again later.');
+        }
+        
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          throw new Error('Service may be unavailable. Please try again later.');
+        }
+        
+        throw new Error(errorData.error || 'Invalid verification code');
+      }
+
+      const data = await response.json();
+      
+      // Store tokens
+      localStorage.setItem('access_token', data.access);
+      localStorage.setItem('refresh_token', data.refresh);
+      
+      // Set user from response
+      setUser(data.user);
+      
+    } catch (error) {
+      // Check if it's a network error or server exception
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Service may be unavailable. Please try again later.');
+      }
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resend2FACode = async (userId: number, purpose: string = 'login'): Promise<{success: boolean, message: string}> => {
+    try {
+      const response = await fetch(API_ENDPOINTS.RESEND_2FA_CODE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId, purpose }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.error || 'Failed to resend verification code'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Service may be unavailable. Please try again later.'
+      };
+    }
+  };
+
   const register = async (userData: RegisterData): Promise<{success: boolean, message: string, email?: string}> => {
     try {
-      console.log('🔍 AuthContext: Starting registration process...');
-      console.log('🔍 AuthContext: Register URL:', API_ENDPOINTS.REGISTER);
-      console.log('🔍 AuthContext: Register data:', { ...userData, password: '***' });
       setIsLoading(true);
       
       const response = await fetch(API_ENDPOINTS.REGISTER, {
@@ -159,9 +260,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify(userData),
       });
 
-      console.log('🔍 AuthContext: Register response status:', response.status);
       const data = await response.json();
-      console.log('🔍 AuthContext: Register response data:', data);
 
       if (!response.ok) {
         // Handle server errors (5xx)
@@ -278,69 +377,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const googleLogin = async (token: string): Promise<void> => {
+  const checkEmailRateLimit = async (email: string, requestType: string = 'email_verification'): Promise<RateLimitStatus> => {
     try {
-      console.log('🔍 GoogleLogin called with token:', token?.substring(0, 20) + '...');
-      setIsLoading(true);
-      
-      console.log('🔍 Making request to:', API_ENDPOINTS.GOOGLE_OAUTH);
-      const response = await fetch(API_ENDPOINTS.GOOGLE_OAUTH, {
+      const response = await fetch(API_ENDPOINTS.CHECK_EMAIL_RATE_LIMIT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ email, request_type: requestType }),
       });
-      
-      console.log('🔍 Google OAuth response status:', response.status);
-
-      if (!response.ok) {
-        // Handle server errors (5xx)
-        if (response.status >= 500) {
-          throw new Error('Service may be unavailable. Please try again later.');
-        }
-        
-        let errorData;
-        try {
-          errorData = await response.json();
-          console.log('🔍 Google OAuth error response:', errorData);
-        } catch (jsonError) {
-          console.log('❌ Failed to parse error response JSON:', jsonError);
-          throw new Error('Service may be unavailable. Please try again later.');
-        }
-        
-        // Handle 400 errors (bad request) - show specific Google auth errors
-        if (response.status === 400) {
-          console.log('❌ Google OAuth 400 error:', errorData.error);
-          throw new Error(errorData.error || 'Google authentication failed');
-        }
-        
-        // For other errors, show generic message
-        console.log('❌ Google OAuth other error:', response.status);
-        throw new Error('Service may be unavailable. Please try again later.');
-      }
 
       const data = await response.json();
-      console.log('✅ Google OAuth success response:', data);
+
+      if (response.ok) {
+        return {
+          can_send: data.can_send,
+          time_remaining: data.time_remaining
+        };
+      } else {
+        // On error, assume rate limiting is not active
+        return {
+          can_send: true,
+          time_remaining: 0
+        };
+      }
+    } catch (error) {
+      // On network error, assume rate limiting is not active
+      return {
+        can_send: true,
+        time_remaining: 0
+      };
+    }
+  };
+
+  const googleLogin = async (googleUserData: any): Promise<void> => {
+    try {
+      setIsLoading(true);
       
-      // Store tokens
-      localStorage.setItem('access_token', data.access);
-      localStorage.setItem('refresh_token', data.refresh);
-      console.log('✅ Tokens stored in localStorage');
+      // Unified login/register approach - single endpoint handles both scenarios
+      const enrichedData = {
+        ...googleUserData,
+        platform: 'web',
+        timestamp: new Date().toISOString(),
+      };
       
-      // Set user from response
-      setUser(data.user);
-      console.log('✅ User set in context:', data.user);
+      const response = await fetch(API_ENDPOINTS.GOOGLE_LOGIN, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(enrichedData),
+      });
+      
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success) {
+          const { tokens, user: userData, is_new_user } = data;
+          
+          
+          // Store tokens
+          localStorage.setItem('access_token', tokens.access);
+          localStorage.setItem('refresh_token', tokens.refresh);
+          
+          setUser(userData);
+          return;
+        } else {
+          throw new Error(data.error || 'Google authentication failed');
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Google authentication failed');
+      }
       
     } catch (error) {
-      console.log('❌ Google OAuth error in AuthContext:', error);
+      
       // Check if it's a network error or server exception
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Service may be unavailable. Please try again later.');
       }
+      
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshUserData = async () => {
+    try {
+      const userData = await apiRequest(API_ENDPOINTS.USER_PROFILE);
+      setUser(userData);
+    } catch (error) {
+      // Don't logout on refresh failure, just log the error
     }
   };
 
@@ -355,10 +484,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     isAuthenticated,
     login,
+    loginVerify2FA,
+    resend2FACode,
     register,
     verifyEmail,
     resendVerification,
+    checkEmailRateLimit,
     googleLogin,
+    refreshUserData,
     logout,
   };
 

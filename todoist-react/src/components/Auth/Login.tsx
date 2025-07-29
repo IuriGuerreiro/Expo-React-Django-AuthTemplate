@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import GoogleOAuth from './GoogleOAuth';
 import ErrorMessage from './ErrorMessage';
+import LoginTwoFactor from './LoginTwoFactor';
 import './Auth.css';
 
 interface LoginProps {
   onSwitchToRegister: () => void;
+  onSwitchToPasswordReset: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
+const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToPasswordReset }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [twoFactorData, setTwoFactorData] = useState<{
+    userId: number;
+    email: string;
+    message: string;
+    codeAlreadySent?: boolean;
+  } | null>(null);
   const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     setError('');
@@ -30,14 +40,54 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
     }
 
     try {
-      await login(email, password);
-      // Success - will redirect automatically via AuthContext
+      const result = await login(email, password);
+      
+      // Check if email verification is required
+      if (result.emailNotVerified) {
+        // Navigate to dedicated email verification pending page
+        navigate('/verify-email-pending', { 
+          state: { 
+            email: result.email || email,
+            message: result.message || 'Please verify your email address before logging in.',
+            fromLogin: true
+          } 
+        });
+        return;
+      }
+      
+      // Check if 2FA is required
+      if (result.requires2FA && result.userId && result.message) {
+        setTwoFactorData({
+          userId: result.userId,
+          email: email,
+          message: result.message,
+          codeAlreadySent: result.codeAlreadySent
+        });
+      }
+      // If no 2FA required, success - will redirect automatically via AuthContext
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      console.log('Login error caught:', errorMessage); // Temporary debug
       setError(errorMessage);
     }
   };
+
+  const handleBackFrom2FA = () => {
+    setTwoFactorData(null);
+    setError('');
+  };
+
+  // If 2FA is required, show 2FA component
+  if (twoFactorData) {
+    return (
+      <LoginTwoFactor
+        userId={twoFactorData.userId}
+        email={twoFactorData.email}
+        message={twoFactorData.message}
+        codeAlreadySent={twoFactorData.codeAlreadySent}
+        onBack={handleBackFrom2FA}
+      />
+    );
+  }
 
   return (
     <div className="auth-container">
@@ -82,6 +132,17 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
                 }
               }}
             />
+          </div>
+
+          <div className="form-group" style={{ textAlign: 'right', marginBottom: '1rem' }}>
+            <button 
+              type="button" 
+              className="link-button" 
+              onClick={onSwitchToPasswordReset}
+              style={{ fontSize: '0.9rem', padding: '0' }}
+            >
+              Forgot Password?
+            </button>
           </div>
 
           <button 

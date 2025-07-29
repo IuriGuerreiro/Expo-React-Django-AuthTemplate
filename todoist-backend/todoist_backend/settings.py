@@ -25,16 +25,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=7+e-&m5w@jt)1*i&tugnh2+^%6uhkc-c2-!=1&9^2rfbk2uks'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=7+e-&m5w@jt)1*i&tugnh2+^%6uhkc-c2-!=1&9^2rfbk2uks')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = [
-    '192.168.3.2',  # Local network IP
-    'localhost',
-    '127.0.0.1'
-]
+# Parse ALLOWED_HOSTS from environment variable
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '192.168.3.2,localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -170,22 +167,11 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
 }
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React app
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite dev server
-    "http://localhost:5174",  # Vite dev server (alternate port)
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    "http://localhost:8080",  # Expo dev server
-    "http://127.0.0.1:8080",
-    "http://localhost:8081",  # Expo dev server (alternate port)
-    "http://127.0.0.1:8081",
-    "http://192.168.3.2:8080",# Expo dev server
-    "http://192.168.3.2:8081",# Expo dev server
-    "http://192.168.3.2:8082"# Expo dev server
-]
+# CORS settings - parse from environment variable
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS', 
+    'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081,http://192.168.3.2:8080,http://192.168.3.2:8081,http://192.168.3.2:8082'
+).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -202,14 +188,10 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Disable CSRF for API endpoints since we're using JWT authentication
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000", 
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-]
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'
+).split(',')
 
 # Media files
 MEDIA_URL = '/media/'

@@ -12,7 +12,11 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
-const DashboardScreen: React.FC = () => {
+interface DashboardScreenProps {
+  navigation: any;
+}
+
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
@@ -45,9 +49,17 @@ const DashboardScreen: React.FC = () => {
               Hello, {user?.first_name || user?.username}!
             </Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#667eea" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.settingsButton} 
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Ionicons name="settings-outline" size={24} color="#667eea" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={24} color="#667eea" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -98,6 +110,33 @@ const DashboardScreen: React.FC = () => {
                 </Text>
               </View>
             </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>2FA Status:</Text>
+              <View style={styles.verificationStatus}>
+                <Ionicons
+                  name={user?.two_factor_enabled ? "shield-checkmark" : "shield-outline"}
+                  size={16}
+                  color={user?.two_factor_enabled ? "#10B981" : "#EF4444"}
+                />
+                <Text style={[
+                  styles.detailValue,
+                  { color: user?.two_factor_enabled ? "#10B981" : "#EF4444" }
+                ]}>
+                  {user?.two_factor_enabled ? "Enabled" : "Disabled"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.actionsSection}>
+            <TouchableOpacity 
+              style={styles.settingsActionButton}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Ionicons name="settings-outline" size={20} color="#667eea" />
+              <Text style={styles.settingsActionText}>Account Settings</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -160,6 +199,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
   },
   logoutButton: {
     padding: 8,
@@ -251,6 +299,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#374151',
     flex: 1,
+  },
+  actionsSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  settingsActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#667eea',
+    borderRadius: 8,
+  },
+  settingsActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
 

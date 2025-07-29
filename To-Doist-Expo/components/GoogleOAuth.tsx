@@ -31,16 +31,15 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
   // Check if Google is configured
   const isGoogleConfigured = Boolean(ENV.GOOGLE_WEB_CLIENT_ID && ENV.GOOGLE_WEB_CLIENT_ID.trim() !== '');
 
-  // Google OAuth setup
+  // Google OAuth setup - using environment variables
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: ENV.GOOGLE_WEB_CLIENT_ID,
-    androidClientId: ENV.GOOGLE_ANDROID_CLIENT_ID || undefined,
-    iosClientId: ENV.GOOGLE_IOS_CLIENT_ID || undefined,
+    androidClientId: ENV.GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: ENV.GOOGLE_IOS_CLIENT_ID,
     redirectUri: makeRedirectUri({
       scheme: 'com.rshazow.todoist',
     }),
     scopes: ['profile', 'email'],
-    responseType: 'token',
   });
 
   // Handle Google OAuth response
@@ -65,12 +64,16 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
     try {
       if (isDebugMode()) {
         console.log('🔍 Processing Google auth response...');
+        console.log('🔍 Platform:', Platform.OS);
+        console.log('🔍 Response type:', response.type);
       }
 
       const { access_token } = response.params || response.authentication || {};
       
       if (!access_token) {
         console.error('❌ No access token received from Google');
+        console.error('❌ Platform:', Platform.OS);
+        console.error('❌ Response data:', response);
         onError('Failed to get Google access token');
         setLocalLoading(false);
         setShowLoadingModal(false);
@@ -83,20 +86,30 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
       });
 
       if (!userInfoResponse.ok) {
+        console.error('❌ Google user info fetch failed:', userInfoResponse.status);
+        console.error('❌ Platform:', Platform.OS);
         throw new Error('Failed to fetch Google user info');
       }
 
       const googleUserData = await userInfoResponse.json();
       
-      if (isDebugMode()) {
-        console.log('✅ Google user data received:', googleUserData.email);
-      }
-
-      // Send to backend via AuthContext
-      await googleLogin(access_token);
+      // Add platform info to user data (like YummiAI)
+      const enrichedUserData = {
+        ...googleUserData,
+        platform: Platform.OS,
+        timestamp: new Date().toISOString(),
+      };
       
       if (isDebugMode()) {
-        console.log('✅ Google login successful');
+        console.log('✅ Google user data received:', googleUserData.email);
+        console.log('✅ Platform:', Platform.OS);
+      }
+
+      // Send to backend via AuthContext with user data (like YummiAI)
+      await googleLogin(enrichedUserData);
+      
+      if (isDebugMode()) {
+        console.log('✅ Google login successful on', Platform.OS);
       }
 
     } catch (error: any) {
@@ -132,10 +145,13 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
 
       if (isDebugMode()) {
         console.log('🔍 Starting Google OAuth flow...');
+        console.log('🔍 Platform:', Platform.OS);
         console.log('🔍 Redirect URI:', makeRedirectUri({ scheme: 'com.rshazow.todoist' }));
         console.log('🔍 Request config:', { 
-          webClientId: ENV.GOOGLE_WEB_CLIENT_ID?.substring(0, 20) + '...', 
-          androidClientId: ENV.GOOGLE_ANDROID_CLIENT_ID?.substring(0, 20) + '...' 
+          platform: Platform.OS,
+          webClientId: ENV.GOOGLE_WEB_CLIENT_ID ? '***' + ENV.GOOGLE_WEB_CLIENT_ID.slice(-10) : 'NOT SET',
+          androidClientId: ENV.GOOGLE_ANDROID_CLIENT_ID ? '***' + ENV.GOOGLE_ANDROID_CLIENT_ID.slice(-10) : 'NOT SET',
+          iosClientId: ENV.GOOGLE_IOS_CLIENT_ID ? '***' + ENV.GOOGLE_IOS_CLIENT_ID.slice(-10) : 'NOT SET'
         });
       }
 
@@ -148,13 +164,20 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
         // Don't show error for cancellation
         setLocalLoading(false);
         setShowLoadingModal(false);
-      } else if (result?.type !== 'success') {
+        return { success: false, error: 'Authentication cancelled' };
+      }
+
+      if (result?.type !== 'success') {
         console.error('❌ Google OAuth failed:', result);
         onError('Google authentication failed');
         setLocalLoading(false);
         setShowLoadingModal(false);
+        return { success: false, error: 'Authentication failed' };
       }
+
       // Success case will be handled by useEffect
+      return { success: true, pending: true };
+      
     } catch (error: any) {
       console.error('❌ Error in handleGoogleAuth:', error);
       
@@ -167,6 +190,7 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
       
       setLocalLoading(false);
       setShowLoadingModal(false);
+      return { success: false, error: error.message || 'Google sign-in failed' };
     }
   };
 

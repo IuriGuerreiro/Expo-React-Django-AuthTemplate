@@ -6,24 +6,44 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "com.rshazow.todoist", 
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#007AFF"
     },
+    "assetBundlePatterns": [
+      "**/*",
+      "assets/fonts/*"
+    ],
+    "fonts": [
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rshazow.todoist",
-      "buildNumber": "1.0.0"
+      "capabilities": {
+        "inAppPurchase": true
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to take photos of your food for calorie tracking.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select food images for calorie tracking.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#007AFF"
       },
       "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "com.android.vending.BILLING"
+      ],
       "package": "com.rshazow.todoist"
     },
     "web": {

@@ -4,12 +4,18 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+
+// Complete auth session for OAuth flows
+WebBrowser.maybeCompleteAuthSession();
 
 import { validateEnv } from './config/env';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import PasswordResetScreen from './screens/PasswordResetScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 // Validate environment variables on app start
 try {
@@ -42,12 +48,16 @@ const AppNavigator: React.FC = () => {
       >
         {isAuthenticated && user ? (
           // Authenticated screens
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <>
+            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+          </>
         ) : (
           // Authentication screens
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="PasswordReset" component={PasswordResetScreen} />
           </>
         )}
       </Stack.Navigator>

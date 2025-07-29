@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import api, { tokenStorage, API_ENDPOINTS } from '../config/api';
 
 // User interface
@@ -9,6 +10,13 @@ interface User {
   first_name: string;
   last_name: string;
   is_email_verified: boolean;
+  two_factor_enabled?: boolean;
+  is_oauth_only_user?: boolean;
+}
+
+interface RateLimitStatus {
+  can_send: boolean;
+  time_remaining: number;
 }
 
 // Auth context interface
@@ -18,7 +26,10 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, confirmPassword: string, firstName: string, lastName: string) => Promise<{success: boolean, message: string} | void>;
-  googleLogin: (credential: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<{success: boolean, message: string}>;
+  checkEmailRateLimit: (email: string, requestType?: string) => Promise<RateLimitStatus>;
+  googleLogin: (googleUserData: any) => Promise<void>;
+  refreshUserData: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
 }
@@ -143,20 +154,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const googleLogin = async (credential: string) => {
+  const googleLogin = async (googleUserData: any) => {
     try {
-      const response = await api.post(API_ENDPOINTS.GOOGLE_OAUTH, {
-        token: credential,
-      });
-
-      const { access, refresh, user: userData } = response.data;
-
-      // Store tokens
-      await tokenStorage.setToken('accessToken', access);
-      await tokenStorage.setToken('refreshToken', refresh);
-
-      setUser(userData);
+      console.log('Processing Google login with user data:', googleUserData.email);
+      console.log('Platform:', Platform.OS);
+      
+      // YummiAI approach - Try login first, then registration if user not found
+      const enrichedData = {
+        ...googleUserData,
+        platform: Platform.OS,
+        timestamp: new Date().toISOString(),
+      };
+      
+      try {
+        // Try login first
+        const loginResponse = await api.post(API_ENDPOINTS.GOOGLE_LOGIN, enrichedData);
+        
+        if (loginResponse.data.success) {
+          console.log('Google login successful');
+          
+          const { tokens, user: userData } = loginResponse.data;
+          
+          // Store tokens
+          await tokenStorage.setToken('accessToken', tokens.access);
+          await tokenStorage.setToken('refreshToken', tokens.refresh);
+          
+          setUser(userData);
+          console.log('Google login successful on', Platform.OS);
+          return;
+        }
+      } catch (loginError: any) {
+        console.log('Login failed, checking if user needs registration...');
+        
+        // Check if it's a "user not found" error
+        if (loginError.response?.data?.error_code === 'user_not_found') {
+          console.log('User not found, attempting registration...');
+          
+          try {
+            // Try registration
+            const registerResponse = await api.post(API_ENDPOINTS.GOOGLE_REGISTER, enrichedData);
+            
+            if (registerResponse.data.success || registerResponse.data.tokens) {
+              console.log('Google registration successful');
+              
+              const { tokens, user: userData } = registerResponse.data;
+              
+              // Store tokens
+              await tokenStorage.setToken('accessToken', tokens.access);
+              await tokenStorage.setToken('refreshToken', tokens.refresh);
+              
+              setUser(userData);
+              console.log('Google registration successful on', Platform.OS);
+              return;
+            } else {
+              throw new Error(registerResponse.data.error || 'Registration failed');
+            }
+          } catch (registerError: any) {
+            console.error('Google registration error:', registerError);
+            throw new Error(registerError.response?.data?.error || 'Registration failed');
+          }
+        } else {
+          // Some other login error
+          throw loginError;
+        }
+      }
     } catch (error: any) {
+      console.error('Google authentication error:', error);
+      console.error('Platform:', Platform.OS);
+      
       let errorMessage = 'Google authentication failed';
       
       if (error.response?.status >= 500) {
@@ -168,6 +233,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       throw new Error(errorMessage);
+    }
+  };
+
+  const refreshUserData = async () => {
+    try {
+      const response = await api.get(API_ENDPOINTS.USER_PROFILE);
+      setUser(response.data);
+    } catch (error) {
+      console.log('❌ AuthContext: Failed to refresh user data:', error);
+      // Don't logout on refresh failure, just log the error
+    }
+  };
+
+  const resendVerification = async (email: string): Promise<{success: boolean, message: string}> => {
+    try {
+      const response = await api.post(API_ENDPOINTS.RESEND_VERIFICATION, { email });
+      
+      return {
+        success: true,
+        message: response.data.message || 'Verification email sent successfully'
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to resend verification email';
+      return {
+        success: false,
+        message: errorMessage
+      };
+    }
+  };
+
+  const checkEmailRateLimit = async (email: string, requestType: string = 'email_verification'): Promise<RateLimitStatus> => {
+    try {
+      const response = await api.post(API_ENDPOINTS.CHECK_EMAIL_RATE_LIMIT, {
+        email,
+        request_type: requestType,
+      });
+
+      return {
+        can_send: response.data.can_send,
+        time_remaining: response.data.time_remaining
+      };
+    } catch (error) {
+      // On error, assume rate limiting is not active
+      console.log('Rate limit check failed:', error);
+      return {
+        can_send: true,
+        time_remaining: 0
+      };
     }
   };
 
@@ -195,7 +308,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     register,
+    resendVerification,
+    checkEmailRateLimit,
     googleLogin,
+    refreshUserData,
     logout,
     checkAuthStatus,
   };

@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import AuthScreen from './components/Auth/AuthScreen';
 import Dashboard from './components/Dashboard/Dashboard';
 import EmailVerification from './components/Auth/EmailVerification';
+import EmailVerificationPending from './components/Auth/EmailVerificationPending';
 import './App.css';
 
 // Email verification wrapper to get token from route params
@@ -25,9 +26,9 @@ const AppContent: React.FC = () => {
       <Route path="/" element={<AuthScreen />} />
       <Route path="/login" element={<AuthScreen />} />
       <Route path="/register" element={<AuthScreen />} />
-      <Route path="/forgot-password" element={<AuthScreen />} />
-      <Route path="/reset-password/:token" element={<AuthScreen />} />
+      <Route path="/password-reset" element={<AuthScreen />} />
       <Route path="/verify-email/:token" element={<EmailVerificationWrapper />} />
+      <Route path="/verify-email-pending" element={<EmailVerificationPending />} />
     </Routes>
   );
 };

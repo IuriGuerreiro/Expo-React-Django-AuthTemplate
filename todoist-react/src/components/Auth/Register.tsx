@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import GoogleOAuth from './GoogleOAuth';
 import ErrorMessage from './ErrorMessage';
 import './Auth.css';
@@ -18,8 +19,8 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     last_name: '',
   });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const { register, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -30,7 +31,6 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
   const handleRegister = async () => {
     setError('');
-    setSuccess('');
 
     if (!formData.username || !formData.email || !formData.password) {
       setError('Please fill in all required fields');
@@ -56,18 +56,12 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       const result = await register(submitData);
       
       if (result.success) {
-        // Show success message - user needs to verify email
-        setError(''); // Clear any previous errors
-        setSuccess(`${result.message} Check your email at ${result.email} for the verification link.`);
-        
-        // Clear form
-        setFormData({
-          username: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-          first_name: '',
-          last_name: '',
+        // Redirect to email verification pending page
+        navigate('/verify-email-pending', {
+          state: {
+            email: result.email || formData.email,
+            fromRegistration: true
+          }
         });
       } else {
         setError(result.message);
@@ -87,19 +81,6 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
 
         <div className="auth-form">
           {error && <ErrorMessage message={error} onClose={() => setError('')} />}
-          {success && (
-            <div className="success-message">
-              <span className="error-text">{success}</span>
-              <button 
-                onClick={() => setSuccess('')}
-                className="error-close"
-                type="button"
-                aria-label="Close success message"
-              >
-                ✕
-              </button>
-            </div>
-          )}
           
           <div className="form-row">
             <div className="form-group">

@@ -103,6 +103,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             />
           </View>
 
+          <View style={styles.forgotPasswordContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PasswordReset')}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.disabledButton]}
             onPress={handleLogin}
@@ -181,6 +189,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 12,
+  },
+  forgotPasswordText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
   },
   input: {
     borderWidth: 2,

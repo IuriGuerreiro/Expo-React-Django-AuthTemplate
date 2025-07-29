@@ -7,7 +7,7 @@ export const ENV = {
                 process.env.EXPO_PUBLIC_API_BASE_URL || 
                 'http://192.168.3.2:8000',
 
-  // Google OAuth Configuration
+  // Google OAuth Configuration - reads from .env file
   GOOGLE_WEB_CLIENT_ID: Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 
                        process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 
                        '',

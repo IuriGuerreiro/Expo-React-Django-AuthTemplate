@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Login from './Login';
 import Register from './Register';
+import PasswordReset from './PasswordReset';
 import './Auth.css';
 
 const AuthScreen: React.FC = () => {
@@ -10,11 +11,13 @@ const AuthScreen: React.FC = () => {
   
   // Determine which component to show based on route
   const isRegisterRoute = location.pathname === '/register';
+  const isPasswordResetRoute = location.pathname === '/password-reset';
   const isLoginRoute = location.pathname === '/login' || location.pathname === '/';
   
-  // Handle navigation between login and register
+  // Handle navigation between auth screens
   const switchToRegister = () => navigate('/register');
   const switchToLogin = () => navigate('/login');
+  const switchToPasswordReset = () => navigate('/password-reset');
 
   return (
     <div className="auth-screen-desktop">
@@ -37,8 +40,13 @@ const AuthScreen: React.FC = () => {
         <div className="auth-form-section">
           {isRegisterRoute ? (
             <Register onSwitchToLogin={switchToLogin} />
+          ) : isPasswordResetRoute ? (
+            <PasswordReset onBackToLogin={switchToLogin} />
           ) : (
-            <Login onSwitchToRegister={switchToRegister} />
+            <Login 
+              onSwitchToRegister={switchToRegister} 
+              onSwitchToPasswordReset={switchToPasswordReset}
+            />
           )}
         </div>
       </div>

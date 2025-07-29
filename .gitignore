@@ -1,60 +1,109 @@
+# Environment Variables (SECURITY CRITICAL)
 .env
-
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+todoist-backend/.env
+todoist-react/.env
+To-Doist-Expo/.env
 
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
-To-Doist-expo/node_modules/
+# Node.js dependencies
+node_modules/
+To-Doist-Expo/node_modules/
+todoist-react/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Expo
-To-Doist-expo/.expo/
-To-Doist-expo/dist/
-To-Doist-expo/web-build/
-To-Doist-expo/expo-env.d.ts
+# Python Environment
+todoist-backend/venv/
+todoist-backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# Native
-To-Doist-expo/.kotlin/
+# Database files
+*.sqlite3
+*.db
+todoist-backend/db.sqlite3
+*/db.sqlite3
+
+# Build outputs
+dist/
+build/
+todoist-react/dist/
+todoist-react/dist-ssr/
+To-Doist-Expo/dist/
+To-Doist-Expo/web-build/
+
+# Expo specific
+To-Doist-Expo/.expo/
+To-Doist-Expo/expo-env.d.ts
+To-Doist-Expo/.metro-health-check*
+
+# React/Vite specific
+todoist-react/logs/
+
+# Mobile development
+To-Doist-Expo/.kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.keystore
 
-# Metro
-To-Doist-expo/.metro-health-check*
-
-# debug
-To-Doist-expo/npm-debug.*
-To-Doist-expo/yarn-debug.*
-To-Doist-expo/yarn-error.*
-
-# macOS
-To-Doist-expo/.DS_Store
+# Credentials and keys (SECURITY CRITICAL)
+credentials/
 *.pem
+**/credentials/**
 
-# local env files
-.env*.local
-.env
+# APK builds
+*.apk
+*.aab
+To-Doist-Expo/*.apk
+To-Doist-Expo/*.aab
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
-todoist-backend/venv/*
-todoist-backend/.env	
-todoist-backend/db.sqlite3
-todoist-backend/__pycache__/
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Logs
-todoist-react/logs
 *.log
-todoist-react/npm-debug.log*
-todoist-react/yarn-debug.log*
-todoist-react/yarn-error.log*
-todoist-react/pnpm-debug.log*
-todoist-react/lerna-debug.log*
+server.log
+todoist-backend/server.log
 
-todoist-react/node_modules
-todoist-react/dist
-todoist-react/dist-ssr
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Local development files
 *.local

@@ -1,17 +1,37 @@
-const API_BASE_URL = 'http://192.168.3.2:8000'; // ip da backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.3.2:8000';
 
 export const API_ENDPOINTS = {
   // Authentication endpoints (matching Django authentication/urls.py)
   LOGIN: `${API_BASE_URL}/api/auth/login/`,
+  LOGIN_VERIFY_2FA: `${API_BASE_URL}/api/auth/login/verify-2fa/`,
   REGISTER: `${API_BASE_URL}/api/auth/register/`,
   REFRESH_TOKEN: `${API_BASE_URL}/api/auth/token/refresh/`,
   LOGOUT: `${API_BASE_URL}/api/auth/logout/`,
   VERIFY_EMAIL: `${API_BASE_URL}/api/auth/verify-email/`,
   RESEND_VERIFICATION: `${API_BASE_URL}/api/auth/resend-verification/`,
-  GOOGLE_OAUTH: `${API_BASE_URL}/api/auth/google-oauth/`,
+  CHECK_EMAIL_RATE_LIMIT: `${API_BASE_URL}/api/auth/check-rate-limit/`,
+  RESEND_2FA_CODE: `${API_BASE_URL}/api/auth/resend-2fa-code/`,
+  
+  // Google OAuth endpoints (YummiAI style)
+  GOOGLE_LOGIN: `${API_BASE_URL}/api/auth/google/login/`,
+  GOOGLE_REGISTER: `${API_BASE_URL}/api/auth/google/register/`,
+  GOOGLE_OAUTH: `${API_BASE_URL}/api/auth/google-oauth/`, // Legacy endpoint
   
   // User endpoints  
   USER_PROFILE: `${API_BASE_URL}/api/auth/profile/`,
+  
+  // 2FA endpoints
+  TWO_FACTOR_TOGGLE: `${API_BASE_URL}/api/auth/2fa/toggle/`,
+  TWO_FACTOR_VERIFY: `${API_BASE_URL}/api/auth/2fa/verify/`,
+  TWO_FACTOR_STATUS: `${API_BASE_URL}/api/auth/2fa/status/`,
+  
+  // Password setup endpoints (OAuth users only)
+  PASSWORD_SETUP_REQUEST: `${API_BASE_URL}/api/auth/password/request/`,
+  PASSWORD_SETUP_SET: `${API_BASE_URL}/api/auth/password/set/`,
+  
+  // Password reset endpoints (all users)
+  PASSWORD_RESET_REQUEST: `${API_BASE_URL}/api/auth/password/reset/request/`,
+  PASSWORD_RESET: `${API_BASE_URL}/api/auth/password/reset/`,
   
   // Todo endpoints (future)
   TODOS: `${API_BASE_URL}/api/todos/`,

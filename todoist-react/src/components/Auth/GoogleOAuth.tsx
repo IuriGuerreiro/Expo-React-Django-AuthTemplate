@@ -1,6 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
+// Utility function to decode JWT token (simplified, for Google ID tokens)
+const decodeJWTPayload = (token: string) => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT token structure');
+    }
+    
+    const payload = parts[1];
+    // Add padding if needed
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+    const decoded = atob(paddedPayload);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Failed to decode JWT token:', error);
+    throw new Error('Invalid token format');
+  }
+};
+
 declare global {
   interface Window {
     google: any;
@@ -60,10 +79,6 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
   const initializeGoogleSignIn = () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     
-    console.log('🔍 Current URL origin:', window.location.origin);
-    console.log('🔍 Current URL hostname:', window.location.hostname);
-    console.log('🔍 Current URL port:', window.location.port);
-    console.log('🔍 Full URL:', window.location.href);
     
     if (!clientId || clientId === 'undefined' || clientId === '' || clientId.trim() === '') {
       onError('Google Client ID not configured');
@@ -115,15 +130,24 @@ const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onError }) => {
   };
 
   const handleCredentialResponse = async (response: any) => {
-    console.log('🔍 Google credential response received:', response);
     try {
-      console.log('🔍 Calling googleLogin with credential...');
-      await googleLogin(response.credential);
-      console.log('✅ Google login successful');
+      
+      // Decode the JWT token to extract user data
+      const googleUserData = decodeJWTPayload(response.credential);
+      
+      // Map Google user data to expected format
+      const userData = {
+        email: googleUserData.email,
+        sub: googleUserData.sub,
+        given_name: googleUserData.given_name || '',
+        family_name: googleUserData.family_name || '',
+        picture: googleUserData.picture || '',
+        email_verified: googleUserData.email_verified || false,
+      };
+      
+      await googleLogin(userData);
     } catch (error) {
-      console.log('❌ Google login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Google authentication failed';
-      console.log('❌ Setting error message:', errorMessage);
       onError(errorMessage);
     }
   };
